@@ -59,7 +59,7 @@ func (m *UncachedMap) String() string {
 }
 
 //Map maps a uncahced memory to virtual memory.
-func (m *UncachedMap) Map(physAddr uint32, unused string, uncachedMemFlags uint32) error {
+func (m *UncachedMap) Map(unused uint32, unused2 string, uncachedMemFlags uint32) error {
 	var err error
 	handle, err := vcOpen(m.size)
 	if err != nil {
@@ -108,13 +108,13 @@ func (m *UncachedMap) vcMsg(buf vcMsgStruct) (vcMsgStruct, error) {
 		bPointer := uintptr(unsafe.Pointer(&buf))
 		err := ioctl.Ioctl(uintptr(m.handle), ioctl.Iowr(100, 0, unsafe.Sizeof(bPointer)), bPointer)
 		if err != nil {
-			return vcMsgStruct{}, errors.Wrap(err, "ioctl mbox msg")
+			return vcMsgStruct{}, errors.Wrap(err, "ioctl uncachedMap msg")
 		}
 		res := *(*vcMsgStruct)(unsafe.Pointer(bPointer))
 		//fmt.Printf("Response %v\n", res)
 		if res.req == 0x80000001 || (res.req&0x80000000) == 0 {
 			//Error during request
-			return vcMsgStruct{}, errors.New("Got error response from mbox")
+			return vcMsgStruct{}, errors.New("Got error response from videocore")
 		}
 		return res, nil
 	}
@@ -136,7 +136,7 @@ func (m *UncachedMap) allocate(align, flags uint32) error {
 	var err error
 	p, err = m.vcMsg(p)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("mbox alloc; size: 0x%x", m.size))
+		return errors.Wrap(err, "uncachedMap alloc")
 	}
 	m.memRef = p.uints[0]
 	return nil
@@ -154,7 +154,7 @@ func (m *UncachedMap) free() error {
 	p.uints[0] = m.memRef
 	var err error
 	p, err = m.vcMsg(p)
-	if err != nil {
+	if err != errors.Wrap(err, "uncachedMap alloc") {
 		return err
 	}
 	if p.uints[0] != 0 {
@@ -177,13 +177,13 @@ func (m *UncachedMap) lock() error {
 	var err error
 	p, err = m.vcMsg(p)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "uncachedMap lock")
 	}
 	m.busAddr = p.uints[0]
 	m.physAddr = busToPhys(m.busAddr)
-	virtAddr, err := mapSegment(m, MemDevDefault)
+	virtAddr, err := MapSegment(m, MemDevDefault)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "uncachedMap lock")
 	}
 	m.virtAddr = virtAddr
 	return nil
@@ -202,10 +202,14 @@ func (m *UncachedMap) unlock() error {
 	var err error
 	p, err = m.vcMsg(p)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "uncachedMap unlock")
 	}
 	if p.uints[0] != 0 {
 		return errors.New("could not free mbox mem")
+	}
+	err = UnmapSegment(m)
+	if err != nil {
+		return errors.Wrap(err, "uncachedMap unlock")
 	}
 	m.busAddr = 0
 	m.physAddr = 0

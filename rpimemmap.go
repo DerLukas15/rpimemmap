@@ -30,8 +30,9 @@ type MemMap interface {
 	Size() uint32
 }
 
-// get virtual memory segment for from physical memory address
-func mapSegment(curMap MemMap, memDev string) (unsafe.Pointer, error) {
+//MapSegment maps a MemMap to virtual memory from physical memory address.
+//See const MemDev for possible memDev.
+func MapSegment(curMap MemMap, memDev string) (unsafe.Pointer, error) {
 	memFd, err := os.OpenFile(memDev, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, errors.Wrap(err, "open memdevice")
@@ -46,9 +47,9 @@ func mapSegment(curMap MemMap, memDev string) (unsafe.Pointer, error) {
 	return unsafe.Pointer(&mem[0]), nil
 }
 
-//unmap virtual memory
-func unmapSegment(mem unsafe.Pointer) error {
-	err := unix.Munmap(*(*[]byte)(mem))
+//UnmapSegment unmaps a MemMap from virtual memory
+func UnmapSegment(curMap MemMap) error {
+	err := unix.Munmap(*(*[]byte)(curMap.VirtAddr()))
 	if err != nil {
 		return err
 	}

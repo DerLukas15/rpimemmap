@@ -39,7 +39,7 @@ func (m *PeripheralMap) Map(physAddr uint32, memDev string, unused uint32) error
 	var err error
 	m.physAddr = physAddr
 	m.busAddr = physAddr + busRegisterBase
-	m.virtAddr, err = mapSegment(m, memDev)
+	m.virtAddr, err = MapSegment(m, memDev)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (m *PeripheralMap) Unmap() error {
 		//Not mapped
 		return nil
 	}
-	err := unmapSegment(m.virtAddr)
+	err := UnmapSegment(m)
 	if err != nil {
 		return errors.Wrap(err, "unmap peripheral")
 	}
