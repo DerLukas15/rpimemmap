@@ -1,3 +1,4 @@
+//Package rpimemmap is used for allocating uncached memory and physical devices on Raspberry Pi's using plain GO.
 package rpimemmap
 
 import (
