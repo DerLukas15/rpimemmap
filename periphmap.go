@@ -14,6 +14,7 @@ type PeripheralMap struct {
 	busAddr  uint32         // bus address
 	virtAddr unsafe.Pointer // virtual address
 	physAddr uint32         // physical address
+	mmapRef  []byte         // from MapSegment
 }
 
 //NewPeripheral creates a new PeripheralMap by supplying the desired size. The size is rounded up to the nearest pageSize.
@@ -46,10 +47,12 @@ func (m *PeripheralMap) Map(physAddr uint32, memDev string, unused uint32) error
 	}
 	m.physAddr = physAddr + curHardware.PhysAddrBase
 	m.busAddr = physAddr + busRegisterBase
-	m.virtAddr, err = MapSegment(m, memDev)
+	virtAddrs, err := MapSegment(m, memDev)
 	if err != nil {
 		return err
 	}
+	m.virtAddr = unsafe.Pointer(&virtAddrs[0])
+	m.mmapRef = virtAddrs
 	return nil
 }
 
@@ -59,11 +62,12 @@ func (m *PeripheralMap) Unmap() error {
 		//Not mapped
 		return nil
 	}
-	err := UnmapSegment(m)
+	err := UnmapSegment(m.mmapRef)
 	if err != nil {
 		return errors.Wrap(err, "unmap peripheral")
 	}
 	m.virtAddr = nil
+	m.mmapRef = nil
 	return nil
 }
 

@@ -29,7 +29,8 @@ type UncachedMap struct {
 	busAddr  uint32         // bus address
 	virtAddr unsafe.Pointer // virtual address
 	physAddr uint32         // physical address
-	memRef   uint32         //memory reference from videocore
+	memRef   uint32         // memory reference from videocore
+	mmapRef  []byte         // from MapSegment
 }
 
 type vcMsgStruct struct {
@@ -192,11 +193,12 @@ func (m *UncachedMap) lock() error {
 	}
 	m.busAddr = p.uints[0]
 	m.physAddr = busToPhys(m.busAddr)
-	virtAddr, err := MapSegment(m, MemDevDefault)
+	virtAddrs, err := MapSegment(m, MemDevDefault)
 	if err != nil {
 		return errors.Wrap(err, "uncachedMap lock")
 	}
-	m.virtAddr = virtAddr
+	m.virtAddr = unsafe.Pointer(&virtAddrs[0])
+	m.mmapRef = virtAddrs
 	return nil
 }
 
@@ -219,13 +221,14 @@ func (m *UncachedMap) unlock() error {
 	if p.uints[0] != 0 {
 		return errors.New("could not free mbox mem")
 	}
-	err = UnmapSegment(m)
+	err = UnmapSegment(m.mmapRef)
 	if err != nil {
 		return errors.Wrap(err, "uncachedMap unlock")
 	}
 	m.busAddr = 0
 	m.physAddr = 0
 	m.virtAddr = nil
+	m.mmapRef = nil
 	return nil
 }
 
