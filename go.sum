@@ -1,3 +1,5 @@
+github.com/DerLukas15/rpihardware v1.0.2 h1:Q7mCmxmID1JyrT33dvywslMImQfuuxuiM49CP5NUAPI=
+github.com/DerLukas15/rpihardware v1.0.2/go.mod h1:8rf5NYKGyhQR9kOyBbkcCZNW1Hg89dwsWF7kkwUb8VU=
 github.com/dswarbrick/smart v0.0.0-20190505152634-909a45200d6d h1:QK8IYltsNy+5QZcDFbVkyInrs98/wHy1tfUTGG91sps=
 github.com/dswarbrick/smart v0.0.0-20190505152634-909a45200d6d/go.mod h1:apXo4PA/BgBPrt66j0N45O2stlBTRowdip2igwcUWVc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

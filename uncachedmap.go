@@ -5,6 +5,7 @@ import (
 	"os"
 	"unsafe"
 
+	"github.com/DerLukas15/rpihardware"
 	"github.com/dswarbrick/smart/ioctl"
 	"github.com/pkg/errors"
 )
@@ -40,27 +41,33 @@ type vcMsgStruct struct {
 	uints [32 - 5]uint32 // Data (108 bytes maximum)
 }
 
-//NewUncached creates a new UncachedMap by supplying the desired size. The size is rounded up to the nearest pageSize.
+//NewUncached creates a new UncachedMap by supplying the desired size.
 func NewUncached(sizeInBytes uint32) *UncachedMap {
 	return &UncachedMap{
-		size: pageRoundUp(sizeInBytes),
+		size: sizeInBytes,
 	}
 }
 
-//String implements Stringer interface
+//String implements Stringer interface.
 func (m *UncachedMap) String() string {
 	var res string
 	res += fmt.Sprintln("Uncached memory")
-	res += fmt.Sprintf("Size %d bytes", m.size)
+	res += fmt.Sprintf("Size %d bytes\n", m.size)
 	res += fmt.Sprintf("PhysAddr %x\n", m.physAddr)
 	res += fmt.Sprintf("BusAddr %x\n", m.busAddr)
 	res += fmt.Sprintf("Virt Addr %x\n", m.virtAddr)
 	return res
 }
 
-//Map maps a uncahced memory to virtual memory.
+//Map maps a uncached memory to virtual memory.
 func (m *UncachedMap) Map(unused uint32, unused2 string, uncachedMemFlags uint32) error {
 	var err error
+	if curHardware == nil {
+		curHardware, err = rpihardware.Check()
+		if err != nil {
+			return err
+		}
+	}
 	handle, err := vcOpen(m.size)
 	if err != nil {
 		return errors.Wrap(err, "uncached map open")
@@ -77,7 +84,7 @@ func (m *UncachedMap) Map(unused uint32, unused2 string, uncachedMemFlags uint32
 	return nil
 }
 
-//Unmap unmaps a virtual address
+//Unmap unmaps a virtual address.
 func (m *UncachedMap) Unmap() error {
 	var err error
 	if m.busAddr != 0 {
@@ -95,6 +102,7 @@ func (m *UncachedMap) Unmap() error {
 	return nil
 }
 
+//used to take to videocore
 func (m *UncachedMap) vcMsg(buf vcMsgStruct) (vcMsgStruct, error) {
 	var retVal = vcMsgStruct{}
 	if m.handle != 0 {
@@ -110,7 +118,7 @@ func (m *UncachedMap) vcMsg(buf vcMsgStruct) (vcMsgStruct, error) {
 		if err != nil {
 			return vcMsgStruct{}, errors.Wrap(err, "ioctl uncachedMap msg")
 		}
-		res := *(*vcMsgStruct)(unsafe.Pointer(bPointer))
+		res := *(*vcMsgStruct)(unsafe.Pointer(&buf))
 		//fmt.Printf("Response %v\n", res)
 		if res.req == 0x80000001 || (res.req&0x80000000) == 0 {
 			//Error during request
@@ -121,6 +129,7 @@ func (m *UncachedMap) vcMsg(buf vcMsgStruct) (vcMsgStruct, error) {
 	return retVal, nil
 }
 
+//allocate uncached memory through videocore
 func (m *UncachedMap) allocate(align, flags uint32) error {
 	if m.memRef != 0 {
 		return errors.New("Allread allocated")
@@ -142,6 +151,7 @@ func (m *UncachedMap) allocate(align, flags uint32) error {
 	return nil
 }
 
+//free allocated uncached memory
 func (m *UncachedMap) free() error {
 	if m.memRef == 0 {
 		return nil
@@ -164,6 +174,7 @@ func (m *UncachedMap) free() error {
 	return nil
 }
 
+//lock allocated uncached memory and get adresses
 func (m *UncachedMap) lock() error {
 	if m.busAddr != 0 {
 		return errors.New("Already locked")
@@ -189,6 +200,7 @@ func (m *UncachedMap) lock() error {
 	return nil
 }
 
+//unlock and release uncached memory
 func (m *UncachedMap) unlock() error {
 	if m.busAddr == 0 {
 		return nil
@@ -217,22 +229,22 @@ func (m *UncachedMap) unlock() error {
 	return nil
 }
 
-//BusAddr returns the current bus address if available
+//BusAddr returns the current bus address if available.
 func (m *UncachedMap) BusAddr() uint32 {
 	return m.busAddr
 }
 
-//PhysAddr returns the current physical address if available
+//PhysAddr returns the current physical address if available.
 func (m *UncachedMap) PhysAddr() uint32 {
 	return m.physAddr
 }
 
-//VirtAddr returns the current virtual address if available
+//VirtAddr returns the current virtual address if available.
 func (m *UncachedMap) VirtAddr() unsafe.Pointer {
 	return m.virtAddr
 }
 
-//Size returns the current size
+//Size returns the current size.
 func (m *UncachedMap) Size() uint32 {
 	return m.size
 }

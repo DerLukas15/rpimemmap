@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/DerLukas15/rpihardware"
 	"github.com/pkg/errors"
 )
 
@@ -26,7 +27,7 @@ func NewPeripheral(sizeInBytes uint32) *PeripheralMap {
 func (m *PeripheralMap) String() string {
 	var res string
 	res += fmt.Sprintln("Mapping to peripheral")
-	res += fmt.Sprintf("Size %d bytes", m.size)
+	res += fmt.Sprintf("Size %d bytes\n", m.size)
 	res += fmt.Sprintf("PhysAddr %x\n", m.physAddr)
 	res += fmt.Sprintf("BusAddr %x\n", m.busAddr)
 	res += fmt.Sprintf("Virt Addr %x\n", m.virtAddr)
@@ -34,10 +35,16 @@ func (m *PeripheralMap) String() string {
 }
 
 //Map maps a peripheral to virtual memory by physical address.
-//memDev can be MemDevDefault (requires root) or MemDevGPIO (only for GPIOs)
+//memDev can be MemDevDefault (requires root) or MemDevGPIO (only for GPIOs).
 func (m *PeripheralMap) Map(physAddr uint32, memDev string, unused uint32) error {
 	var err error
-	m.physAddr = physAddr
+	if curHardware == nil {
+		curHardware, err = rpihardware.Check()
+		if err != nil {
+			return err
+		}
+	}
+	m.physAddr = physAddr + curHardware.PhysAddrBase
 	m.busAddr = physAddr + busRegisterBase
 	m.virtAddr, err = MapSegment(m, memDev)
 	if err != nil {
@@ -46,7 +53,7 @@ func (m *PeripheralMap) Map(physAddr uint32, memDev string, unused uint32) error
 	return nil
 }
 
-//Unmap unmaps a virtual address
+//Unmap unmaps a virtual address.
 func (m *PeripheralMap) Unmap() error {
 	if m.virtAddr == nil {
 		//Not mapped
@@ -60,22 +67,22 @@ func (m *PeripheralMap) Unmap() error {
 	return nil
 }
 
-//BusAddr returns the current bus address if available
+//BusAddr returns the current bus address if available.
 func (m *PeripheralMap) BusAddr() uint32 {
 	return m.busAddr
 }
 
-//PhysAddr returns the current physical address if available
+//PhysAddr returns the current physical address if available.
 func (m *PeripheralMap) PhysAddr() uint32 {
 	return m.physAddr
 }
 
-//VirtAddr returns the current virtual address if available
+//VirtAddr returns the current virtual address if available.
 func (m *PeripheralMap) VirtAddr() unsafe.Pointer {
 	return m.virtAddr
 }
 
-//Size returns the current size
+//Size returns the current size.
 func (m *PeripheralMap) Size() uint32 {
 	return m.size
 }
